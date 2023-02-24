@@ -24,7 +24,7 @@ namespace detect
         class Logger : public nvinfer1::ILogger
         {
         public:
-            virtual void log(Severity severity, char const *msg) noexcept override
+            void log(Severity severity, char const *msg) noexcept override
             {
             }
         };
@@ -47,28 +47,14 @@ namespace detect
         };
 
 
-        class Detection
+        struct Result
         {
-        public:
-            Detection(const int &classId, const cv::Rect &boundingBox, const double &score);
+            const int32_t classId;
+            const cv::Rect boundingBox;
+            double score;
+            std::string className;
 
-            const int32_t &classId() const noexcept;
-
-
-            const cv::Rect &boundingBox() const noexcept;
-
-
-            const double &score() const noexcept;
-
-
-            const std::string &className() const noexcept;
-
-        private:
-            int32_t _classId;
-            std::string _className;
-
-            cv::Rect _boundingBox;
-            double _score;
+            Result(int32_t classId, cv::Rect boundingBox, double score);
         };
 
 
@@ -84,10 +70,20 @@ namespace detect
 
 
         void postprocessResults_0(float *gpu_output, const nvinfer1::Dims &dims,
-                                  const PreprocessorTransform &preprocessorTransform, std::vector<Detection> *out);
+                                  const PreprocessorTransform &preprocessorTransform, std::vector<Result> *out);
 
 
-        void visualizeDetections(cv::Mat &image, std::vector<Detection> &detections);
+        void visualizeDetections(cv::Mat &image, std::vector<Result> &results);
+
+        class Detector
+        {
+        public:
+            Detector(const std::string& weight_path, Logger logger);
+            std::vector<Result> infer(cv::Mat image, std::vector<Result> &results);
+        private:
+            std::unique_ptr<nvinfer1::ICudaEngine> engine;
+            std::unique_ptr<nvinfer1::IExecutionContext> context;
+        };
     }
 }
 #endif //VISION_CPP_YOLOV5_H
