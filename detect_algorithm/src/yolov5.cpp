@@ -253,8 +253,7 @@ std::vector<detect::yolo5::Result> detect::yolo5::Detector::infer(cv::Mat image,
     return results;
 }
 
-detect::yolo5::Detector::Detector(const std::string& weight_path, Logger logger)
+detect::yolo5::Detector::Detector(const std::string& weight_path)
 {
-    engine = nullptr, context = nullptr;
-    loadEngine(weight_path, engine, context, std::move(logger));
+    loadEngine(weight_path, engine, context, logger1);
 }

@@ -26,6 +26,8 @@ namespace detect
         public:
             void log(Severity severity, char const *msg) noexcept override
             {
+                if (severity <= Severity::kWARNING)
+                    std::cout << msg << std::endl;
             }
         };
 
@@ -78,7 +80,8 @@ namespace detect
         class Detector
         {
         public:
-            Detector(const std::string& weight_path, Logger logger);
+            Logger logger1;
+            explicit Detector(const std::string& weight_path);
             std::vector<Result> infer(cv::Mat image, std::vector<Result> &results);
         private:
             std::unique_ptr<nvinfer1::ICudaEngine> engine;
