@@ -23,6 +23,7 @@ link_libraries(nvinfer)
 add_subdirectory(utils_algorithm)
 add_subdirectory(detect_algorithm)
 add_subdirectory(classification_algorithm)
+add_subdirectory(sample)
 
 add_executable(main main.cpp)
 
