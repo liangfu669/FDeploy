@@ -17,23 +17,18 @@
 #include <opencv2/core/cuda_stream_accessor.hpp>
 
 
-namespace detect
-{
-    namespace yolo5
-    {
-        class Logger : public nvinfer1::ILogger
-        {
+namespace detect {
+    namespace yolo5 {
+        class Logger : public nvinfer1::ILogger {
         public:
-            void log(Severity severity, char const *msg) noexcept override
-            {
+            void log(Severity severity, char const *msg) noexcept override {
                 if (severity <= Severity::kWARNING)
                     std::cout << msg << std::endl;
             }
         };
 
 
-        class PreprocessorTransform
-        {
+        class PreprocessorTransform {
         public:
             PreprocessorTransform(const cv::Size &inputSize, const double &f, const int &leftWidth,
                                   const int &topHeight);
@@ -49,8 +44,7 @@ namespace detect
         };
 
 
-        struct Result
-        {
+        struct Result {
             const int32_t classId;
             const cv::Rect boundingBox;
             double score;
@@ -77,12 +71,14 @@ namespace detect
 
         void visualizeDetections(cv::Mat &image, std::vector<Result> &results);
 
-        class Detector
-        {
+        class Detector {
         public:
             Logger logger1;
-            explicit Detector(const std::string& weight_path);
-            std::vector<Result> infer(cv::Mat image, std::vector<Result> &results);
+
+            explicit Detector(const std::string &weight_path);
+
+            std::vector<Result> infer(const cv::Mat& image, std::vector<Result> &results);
+
         private:
             std::unique_ptr<nvinfer1::ICudaEngine> engine;
             std::unique_ptr<nvinfer1::IExecutionContext> context;

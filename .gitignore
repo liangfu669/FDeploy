@@ -2,3 +2,4 @@
 /cmake-build-debug/
 /images/
 /weights/
+/train/resnet/resnet18.onnx

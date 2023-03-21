@@ -8,15 +8,14 @@
 #include "Eigen/Dense"
 #include "opencv2/opencv.hpp"
 #include "opencv2/core/eigen.hpp"
+#include "cmath"
 
 
-namespace utils
-{
-    namespace Retinex
-    {
-        cv::Mat SSR(cv::Mat src, double sigma);
+namespace utils {
+    namespace Retinex {
+        void SSR(cv::Mat src, cv::Mat &dst, double sigma);
 
-        cv::Mat MSR(cv::Mat src, std::vector<float> weight, std::vector<float> sigma);
+        void MSR(cv::Mat src, cv::Mat &dst, std::vector<float> weight, std::vector<float> sigma);
 
     }
 

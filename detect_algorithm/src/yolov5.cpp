@@ -3,16 +3,13 @@
 //
 #include "yolov5.h"
 
-#include <utility>
 
 detect::yolo5::PreprocessorTransform::PreprocessorTransform(const cv::Size &inputSize, const double &f,
                                                             const int &leftWidth, const int &topHeight)
-        :_inputSize(inputSize),_f(f),_leftWidth(leftWidth),_topHeight(topHeight)
-{
+        : _inputSize(inputSize), _f(f), _leftWidth(leftWidth), _topHeight(topHeight) {
 }
 
-cv::Rect detect::yolo5::PreprocessorTransform::transformBbox(const cv::Rect &input) const
-{
+cv::Rect detect::yolo5::PreprocessorTransform::transformBbox(const cv::Rect &input) const {
     cv::Rect r;
     r.x = (input.x - _leftWidth) / _f;
     r.x = MAX(0, MIN(r.x, _inputSize.width - 1));
@@ -21,21 +18,18 @@ cv::Rect detect::yolo5::PreprocessorTransform::transformBbox(const cv::Rect &inp
     r.y = MAX(0, MIN(r.y, _inputSize.width - 1));
 
     r.width = input.width / _f;
-    if (r.x + r.width > _inputSize.width)
-    {
+    if (r.x + r.width > _inputSize.width) {
         r.width = _inputSize.width - r.x;
     }
     r.height = input.height / _f;
-    if (r.y + r.height > _inputSize.height)
-    {
+    if (r.y + r.height > _inputSize.height) {
         r.height = _inputSize.height - r.y;
     }
     return r;
 }
 
 void detect::yolo5::loadEngine(const std::string &filePath, std::unique_ptr<nvinfer1::ICudaEngine> &engine,
-                               std::unique_ptr<nvinfer1::IExecutionContext> &context, Logger logger)
-{
+                               std::unique_ptr<nvinfer1::IExecutionContext> &context, Logger logger) {
     std::ifstream file(filePath, std::ios::binary);
     std::vector<char> data;
 
@@ -52,38 +46,31 @@ void detect::yolo5::loadEngine(const std::string &filePath, std::unique_ptr<nvin
     context.reset(engine->createExecutionContext());
 }
 
-size_t detect::yolo5::getSizeDims(const nvinfer1::Dims &dims)
-{
+size_t detect::yolo5::getSizeDims(const nvinfer1::Dims &dims) {
     size_t size = 1;
-    for (int i = 0; i < dims.nbDims; ++i)
-    {
+    for (int i = 0; i < dims.nbDims; ++i) {
         size *= dims.d[i];
     }
     return size;
 }
 
 void detect::yolo5::cudaGetMem(std::vector<nvinfer1::Dims> &input_dims, std::vector<nvinfer1::Dims> &output_dims,
-                               const std::unique_ptr<nvinfer1::ICudaEngine> &engine, std::vector<void *> &buffers)
-{
+                               const std::unique_ptr<nvinfer1::ICudaEngine> &engine, std::vector<void *> &buffers) {
     // CPU->GPU memory
-    for (int i = 0; i < buffers.size(); ++i)
-    {
+    for (int i = 0; i < buffers.size(); ++i) {
         auto binding_size = getSizeDims(engine->getBindingDimensions(i)) * sizeof(float);
 
         cudaMalloc(&buffers[i], binding_size);
 
-        if (engine->bindingIsInput(i))
-        {
+        if (engine->bindingIsInput(i)) {
             input_dims.emplace_back(engine->getBindingDimensions(i));
-        } else
-        {
+        } else {
             output_dims.emplace_back(engine->getBindingDimensions(i));
         }
 
     }
     // 判断网络是否有误
-    if (input_dims.empty() || output_dims.empty())
-    {
+    if (input_dims.empty() || output_dims.empty()) {
         std::cerr << "Failed load network" << std::endl;
         exit(1);
     }
@@ -91,14 +78,13 @@ void detect::yolo5::cudaGetMem(std::vector<nvinfer1::Dims> &input_dims, std::vec
 
 void detect::yolo5::postprocessResults_0(float *gpu_output, const nvinfer1::Dims &dims,
                                          const PreprocessorTransform &preprocessorTransform,
-                                         std::vector<Result> *out)
-{
+                                         std::vector<Result> *out) {
     std::vector<cv::Rect> boxes;
     std::vector<float> scores;
     std::vector<int> classes;
 
     const int nrClasses = dims.d[2] - 5;
-    const int rowsize = dims.d[2];
+    const int rowSize = dims.d[2];
     const int numGridBoxes = dims.d[1];
 
     std::vector<float> cpu_output(getSizeDims(dims));
@@ -106,31 +92,26 @@ void detect::yolo5::postprocessResults_0(float *gpu_output, const nvinfer1::Dims
 
     float *begin = cpu_output.data(); //...[]............//...[]..........//
 
-    for (int i = 0; i < numGridBoxes; ++i)
-    {
-        float *ptr = begin + i * rowsize;
+    for (int i = 0; i < numGridBoxes; ++i) {
+        float *ptr = begin + i * rowSize;
 
-        const float objectness = ptr[4];
-        if (objectness < 0.4)
-        {
+        const float objectNess = ptr[4];
+        if (objectNess < 0.4) {
             continue;
         }
 
         double maxClassScore = 0.0;
         int maxScoreIndex = 0;
 
-        for (int j = 0; j < nrClasses; ++j)
-        {
+        for (int j = 0; j < nrClasses; ++j) {
             const float &v = ptr[5 + j];
-            if (v > maxClassScore)
-            {
+            if (v > maxClassScore) {
                 maxClassScore = v;
                 maxScoreIndex = j;
             }
         }
-        const double score = objectness * maxClassScore;
-        if (score < 0.4)
-        {
+        const double score = objectNess * maxClassScore;
+        if (score < 0.4) {
             continue;
         }
 
@@ -148,8 +129,7 @@ void detect::yolo5::postprocessResults_0(float *gpu_output, const nvinfer1::Dims
 
     cv::dnn::NMSBoxes(boxes, scores, 0.4, 0.4, indices);
 
-    for (int j: indices)
-    {
+    for (int j: indices) {
         const cv::Rect bbox = preprocessorTransform.transformBbox(boxes[j]);
 
         const double score = MAX(0.0, MIN(1., scores[j]));
@@ -158,10 +138,8 @@ void detect::yolo5::postprocessResults_0(float *gpu_output, const nvinfer1::Dims
     }
 }
 
-void detect::yolo5::visualizeDetections(cv::Mat &image, std::vector<Result> &results)
-{
-    for (const auto &det: results)
-    {
+void detect::yolo5::visualizeDetections(cv::Mat &image, std::vector<Result> &results) {
+    for (const auto &det: results) {
         /*  bounding box  */
         const cv::Rect &bbox = det.boundingBox;
 
@@ -171,8 +149,7 @@ void detect::yolo5::visualizeDetections(cv::Mat &image, std::vector<Result> &res
 
         /*  class  */
         std::string className = det.className;
-        if (className.length() == 0)
-        {
+        if (className.length() == 0) {
             const int classId = det.classId;
             className = std::to_string(classId);
         }
@@ -190,13 +167,11 @@ void detect::yolo5::visualizeDetections(cv::Mat &image, std::vector<Result> &res
 }
 
 detect::yolo5::Result::Result(int32_t classId, cv::Rect boundingBox, double score)
-: classId(classId), boundingBox(boundingBox), score(score)
-{
+        : classId(classId), boundingBox(boundingBox), score(score) {
 
 }
 
-std::vector<detect::yolo5::Result> detect::yolo5::Detector::infer(cv::Mat image, std::vector<Result> &results)
-{
+std::vector<detect::yolo5::Result> detect::yolo5::Detector::infer(const cv::Mat &image, std::vector<Result> &results) {
     std::vector<nvinfer1::Dims> input_dims; // we expect only one input
     std::vector<nvinfer1::Dims> output_dims; // and one output
     std::vector<void *> buffers(engine->getNbBindings());
@@ -231,7 +206,7 @@ std::vector<detect::yolo5::Result> detect::yolo5::Detector::infer(cv::Mat image,
     auto *inputptr = (float *) buffers.at(0);
     std::vector<cv::cuda::GpuMat> channels;
     const int channelSize = networkSize.area();
-    cudaMemcpy(inputptr,cuda_frame.data, 3*channelSize* sizeof(float),cudaMemcpyDeviceToDevice);
+    cudaMemcpy(inputptr, cuda_frame.data, 3 * channelSize * sizeof(float), cudaMemcpyDeviceToDevice);
 
     channels.emplace_back(networkSize, CV_32FC1, inputptr + 2 * channelSize);
     /*  G channel will go here  */
@@ -253,7 +228,6 @@ std::vector<detect::yolo5::Result> detect::yolo5::Detector::infer(cv::Mat image,
     return results;
 }
 
-detect::yolo5::Detector::Detector(const std::string& weight_path)
-{
+detect::yolo5::Detector::Detector(const std::string &weight_path) {
     loadEngine(weight_path, engine, context, logger1);
 }

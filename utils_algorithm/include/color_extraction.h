@@ -7,10 +7,8 @@
 
 #include "opencv2/opencv.hpp"
 
-namespace utils
-{
-    class HsvExtraction
-    {
+namespace utils {
+    class HsvExtraction {
     public:
         std::pair<cv::Scalar, cv::Scalar> black = {cv::Scalar(0, 0, 0), cv::Scalar(180, 255, 46)};
         std::pair<cv::Scalar, cv::Scalar> grey = {cv::Scalar(0, 0, 46), cv::Scalar(180, 43, 220)};
