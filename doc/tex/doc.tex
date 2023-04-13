@@ -1,0 +1,136 @@
+%! Author = liangfuchu
+%! Date = 23-4-8
+%！info 本模板基于基础的 book 文类，所以 book 的选项对于本模板也是有效的（纸张无效，因为模板有设备选项）。默认编码为 UTF-8，推荐使用 \TeX{} Live 编译。
+
+\documentclass[lang=cn,newtx,10pt,scheme=chinese]{elegantbook}
+
+\title{Vision Cpp}
+\subtitle{高性能工业图像算法}
+
+\author{梁富楚}
+\institute{}
+\date{\today}
+\version{1.0}
+\bioinfo{项目源码地址}{https://github.com/liangfu669/vision\_cpp}
+
+\extrainfo{注意：本项目为开源项目，部分代码可能会参考其他开源项目，如有侵权，联删}
+
+\setcounter{tocdepth}{3}
+
+\logo{logo-blue.png}
+\cover{cover.jpg}
+
+% 本文档命令
+\usepackage{array}
+\newcommand{\ccr}[1]{\makecell{{\color{#1}\rule{1cm}{1cm}}}}
+
+% 修改标题页的橙色带
+\definecolor{customcolor}{RGB}{32,178,170}
+\colorlet{coverlinecolor}{customcolor}
+\usepackage{cprotect}
+
+\addbibresource[location=local]{reference.bib} % 参考文献，不要删除
+
+\begin{document}
+
+    \maketitle
+    \frontmatter
+
+    \tableofcontents
+
+    \mainmatter
+
+
+    \chapter{绪论}
+    本文档用于描述如何vision\_cpp算法库的部署，vision\_cpp的代码由cuda，c++，tensorrt开发。
+    不同类型的算法存储在不同文件夹下，各文件夹下包含内容：
+    \begin{itemize}
+        \item utils\_algorithm：包含图像增强算法与关键点矫正，颜色提取等算法。
+        \item detect\_algorithm：包含目标检测算法。
+        \item classification\_algorithm：包含分类算法。
+    \end{itemize}
+
+
+    \chapter{图像增强算法}
+
+
+    \section{图像光照修复算法：Retinex}
+    Retinex是一种常用的建立在科学实验和科学分析基础上的图像增强方法，它是Edwin.H.Land于1963年提出的。
+    就跟Matlab是由Matrix和Laboratory合成的一样，Retinex也是由两个单词合成的一个词语，他们分别是retina 和cortex，
+    即：视网膜和皮层。Land的retinex模式是建立在以下三个假设之上的：
+    \begin{itemize}
+        \item \textbf{真实世界是无颜色的，我们所感知的颜色是光与物质的相互作用的结果。}
+        我们见到的水是无色的，但是水膜—肥皂膜却是显现五彩缤纷，那是薄膜表面光干涉的结果。
+        \item \textbf{每一颜色区域由给定波长的红、绿、蓝三原色构成的。}
+        \item \textbf{三原色决定了每个单位区域的颜色。}
+    \end{itemize}
+    基于三个假设，得到Retinex的基础理论：
+    \begin{enumerate}
+        \item 物体的颜色是由物体对长波（红色），中波（绿色），短波（蓝色）光线的\textbf{反射能力}来决定的，而不是由\textbf{反射光强度}的绝对值来决定的。
+        \item 物体的颜色不受光照非均匀性的影响，具有一致性，即Retinex算法是基于物体的颜色恒常性来实现的。
+        \item Retinex算法可以将图像的动态颜色范围压缩，边缘增强和颜色恒常三个方面达到平衡，在图像除雾方面有着较好的效果（对正常图像的增强效果不明显）。
+    \end{enumerate}
+
+    \subsection{SSR(单尺度Retinex)}\label{subsec:ssr(retinex)}
+    根据Retinex算法的基础理论，我们可以得到以下数学表达式：
+    \begin{equation}
+        S(x, y) = R(x, y) \cdot L(x, y)\label{eq:equation2-1}
+    \end{equation}
+    其中$R(x, y)$表示物体的反射性质，即图像的内在属性，应该最大程度的保留；$L(x,y)$表示入射光图像，决定了图像像素能够达到的动态范围，应该尽量去除；
+    $S(x,y)$为人眼观察到或者相机接收到的图像。
+    对表达式\ref{eq:equation2-1}两边取以10为底的对数得：
+    \begin{equation}
+        r(x,y) = Lg[R(x,y)] = Lg[S(x, y)] - Lg[L(x,y)]\label{eq:equation2-2}
+    \end{equation}
+    算法的目的在于得到增强的图像$R(x,y)$, $S(x,y)$ 是相机采集到的图像，要求解$R(x,y)$,仅需得到$L(x,y)$即可。
+    在通常情况下，我们使用高斯核对$S(x,y)$卷积得到$L(x,y)$。
+    算法步骤：
+    \begin{enumerate}
+        \item 输入高斯模糊的高斯环绕尺度C（即二维高斯函数的标准差）；
+        \item 根据C对原始图像数据$S(x,y)$做高斯模糊得到$L(x,y)$;
+        \item 根据表达式\ref{eq:equation2-1}对$S(x,y)$和$L(x,y)$分别取对数并作差得到r(x,y);
+        \item 将$r(x,y)$的像素值量化到0到255的范围内得到$R(x,y)$，$R(x,y)$即我们想得到的增强图像。量化的公式如下：
+    \end{enumerate}
+    \begin{equation}
+        R(x,y) = (r_i-r_{\min})*255/(r_{\max}-r_{\min})\label{eq:equation2-3}
+    \end{equation}
+
+    \subsection{MSR(多尺度Retinex)}\label{subsec:msr(retinex)}
+    MSR是在SSR基础上发展来的，优点是可以同时保持图像高保真度与对图像的动态范围进行压缩的同时，
+    MSR也可实现色彩增强、颜色恒常性、局部动态范围压缩、全局动态范围压缩，也可以用于X光图像增强。
+    MSR计算公式如下：
+    \begin{equation}
+        r(x,y) = \sum_{i=1}^{n} w_i \{Lg[S(x,y)] - Lg[F_i(x,y) \ast S(x,y)]\} \label{eq:equation2-4}
+    \end{equation}
+    \ref{eq:equation2-4}式中，n是高斯中心环绕函数的个数。$w$为权重，满足$\sum_{i=1}^{n} w_i=1$，当n=1时，MSR退化为SSR。
+    通常来讲，为了保证兼有SSR高、中、低三个尺度的优点来考虑，n取值通常为3，且有：$w_i=\frac{1}{3}$
+
+    此外，实验表明，$C_i$分别取15, 80, 200可以得到较好效果。
+    一般的Retinex算法对光照图像估计时，都会假设初始光照图像是缓慢变化的，即光照图像是平滑的。但实际并非如此，
+    亮度相差很大区域的边缘处，图像光照变化并不平滑。所以在这种情况下，Retinex增强算法在亮度差异大区域的增强图像会产生光晕。
+    另外MSR常见的缺点还有边缘锐化不足，阴影边界突兀，部分颜色发生扭曲，纹理不清晰，高光区域细节没有得到明显改善，对高光区域敏感度小等。
+    
+    \subsection{MSRCR(带色彩恢复的多尺度视网膜增强算法)}\label{subsec:msrcr()}
+    SSR与MSR普遍存在偏色问题，为此，研究者又开发出一种称之为带色彩恢复的多尺度视网膜增强算法
+    （MSRCR,Multi-Scale Retinex with Color Restoration) ，具体讨论的过程详见
+    《A Multiscale Retinex for Bridging the Gap Between Color Images and the Human Observation of Scenes》论文。
+
+    \section{光照修复：gamma矫正}\label{sec::gama}
+    图像增强的目的是改善图像的质量，使图像更适合于特定的应用或显示。其中一种常用的图像增强方法是伽马矫正，
+    它可以通过改变图像的亮度和对比度来增强图像。
+    伽马矫正是基于伽马函数的一种非线性操作。伽马函数可以表示为：
+    \begin{equation}
+        I_{out} = I_{in}^\gamma\label{eq:equation2-5}
+    \end{equation}
+    其中，$I_{in}$ 和 $I_{out}$ 分别表示输入和输出图像的像素值，$\gamma$ 表示伽马值。
+    当 $\gamma > 1$ 时，图像的对比度会增加，即暗区域更暗、亮区域更亮；当 $\gamma < 1$ 时，图像的对比度会减小，
+    即暗区域更亮、亮区域更暗；当 $\gamma = 1$ 时，图像不会发生变化。
+
+    伽马值通常在 0.2 到 2.5 之间取值，具体取值需要根据实际情况进行调整。
+    在实际应用中，伽马矫正通常被用于增强低对比度的图像，如X光图像和红外图像等。
+
+    伽马矫正的原理是对输入图像的像素值进行非线性变换，使得像素值在一定范围内分布更加均匀，
+    从而改善图像的对比度和清晰度。但是需要注意的是，伽马矫正可能会导致图像的颜色失真和噪声增加，
+    因此需要在实际应用中根据具体情况进行调整。
+
+\end{document}

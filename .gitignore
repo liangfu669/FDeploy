@@ -3,3 +3,11 @@
 /images/
 /weights/
 /train/resnet/resnet18.onnx
+/doc/pdf/doc.aux
+/doc/pdf/doc.log
+/doc/pdf/doc.synctex.gz
+/.idea
+/doc/pdf/doc.out
+/doc/pdf/doc.bcf
+/doc/pdf/doc.run.xml
+/doc/pdf/doc.toc

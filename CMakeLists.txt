@@ -1,6 +1,10 @@
 # 视觉算法cpp版
-cmake_minimum_required(VERSION 3.1)
-project(vision_cpp)
+cmake_minimum_required(VERSION 3.24)
+
+set(CMAKE_CUDA_COMPILER /usr/local/cuda/bin/nvcc) # 指定CUDA编译器
+set(CMAKE_CUDA_ARCHITECTURES 80)
+
+project(vision_cpp CXX CUDA)
 
 set(CMAKE_CXX_STANDARD 14)
 set(OpenCV_DIR /home/soft/opencv/lib/cmake/opencv4)

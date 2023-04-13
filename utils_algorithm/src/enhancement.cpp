@@ -4,55 +4,68 @@
 
 #include "enhancement.h"
 
-void utils::Retinex::SSR(cv::Mat src, cv::Mat &dst, double sigma) {
-    cv::Mat L(src.size(), CV_32FC3), LLog(src.size(), CV_32FC3),
-            SLog(src.size(), CV_32FC3), RLog(src.size(), CV_32FC3);
-    dst = cv::Mat(src.size(), CV_32FC3);
-    // 求Log[S(x,y)]
-    for (int i = 0; i < src.rows; ++i) {
-        for (int j = 0; j < src.cols; ++j) {
-            for (int k = 0; k < 3; ++k) {
-                float value = src.at<cv::Vec3b>(i, j)[k];
-                if (value <= 0.01) value = 0.01;
-                SLog.at<cv::Vec3f>(i, j)[k] = log10(value);
-            }
-        }
-    }
-    // 求L(x,y)
+void utils::Retinex::SSR(const cv::Mat &src, cv::Mat &dst, double sigma) {
+    cv::Mat L(src.size(), CV_64FC3), LLog(src.size(), CV_64FC3),
+            SLog(src.size(), CV_64FC3), RLog(src.size(), CV_64FC3);
+    cv::Mat src_64F;
+    src.convertTo(src_64F, CV_64FC3);
+    dst = cv::Mat(src.size(), CV_64FC3);
+    cv::log(src_64F, SLog);
     int kSize = (int) (sigma * 3 / 2);
     kSize = kSize * 2 + 1;
     cv::GaussianBlur(src, L, cv::Size(kSize, kSize), sigma, sigma, 4);
-    // 求Log[L(x,y)]
-    for (int i = 0; i < L.rows; ++i) {
-        for (int j = 0; j < L.cols; ++j) {
-            for (int k = 0; k < 3; ++k) {
-                float value = L.at<cv::Vec3b>(i, j)[k];
-                if (value <= 0.01) value = 0.01;
-                LLog.at<cv::Vec3f>(i, j)[k] = log10(value);
-            }
-        }
+    L.convertTo(L, CV_64FC3);
+    cv::log(L, LLog);
+    cv::subtract(SLog, LLog, RLog);
+    cv::Mat channels[src.channels()];
+    cv::split(RLog, channels);
+    for (int i = 0; i < src.channels(); ++i) {
+        double minVal, maxVal;
+        cv::minMaxLoc(channels[i], &minVal, &maxVal);
+        double scale = 255 / (maxVal - minVal);
+        cv::subtract(channels[i], minVal, channels[i]);
+        cv::multiply(channels[i], scale, channels[i]);
     }
-    // 求Log[R(x,y)]
-    float vMax[3] = {0, 0, 0};
-    float vMin[3] = {0, 0, 0};
-    for (int i = 0; i < L.rows; ++i) {
-        for (int j = 0; j < L.cols; ++j) {
-            for (int k = 0; k < 3; ++k) {
-                auto value = SLog.at<cv::Vec3f>(i, j)[k] - LLog.at<cv::Vec3f>(i, j)[k];
-                RLog.at<cv::Vec3f>(i, j)[k] = value;
-                if (value > vMax[k]) vMax[k] = value;
-                else if (value < vMin[k]) vMin[k] = value;
-            }
-        }
-    }
-    // 求R(x,y)
-    for (int i = 0; i < RLog.rows; ++i) {
-        for (int j = 0; j < RLog.cols; ++j) {
-            for (int k = 0; k < 3; ++k) {
-                float value = RLog.at<cv::Vec3f>(i, j)[k];
-                dst.at<cv::Vec3f>(i, j)[k] = cv::saturate_cast<float>((value - vMin[k]) * 255 / (vMax[k] - vMin[k]));
-            }
-        }
-    }
+    cv::merge(channels, src.channels(), dst);
     dst.convertTo(dst, CV_8UC3);
+}
+
+void utils::Retinex::MSR(const cv::Mat &src, cv::Mat &dst, std::vector<double> weights, std::vector<double> sigmas) {
+    cv::Mat L(src.size(), CV_64FC3), LLog(src.size(), CV_64FC3),
+            SLog(src.size(), CV_64FC3);
+    cv::Mat RLog = cv::Mat::zeros(src.size(), CV_64FC3);
+    cv::Mat src_64F;
+    src.convertTo(src_64F, CV_64FC3);
+    cv::log(src_64F, SLog);
+    int n = weights.size();
+    for (int i = 0; i < n; ++i) {
+        cv::Mat RLogi;
+        int kSize = (int) (sigmas[i] * 3 / 2);
+        kSize = kSize * 2 + 1;
+        cv::GaussianBlur(src, L, cv::Size(kSize, kSize), sigmas[i], sigmas[i], 4);
+        L.convertTo(L, CV_64FC3);
+        cv::log(L, LLog);
+        cv::subtract(SLog, LLog, RLogi);
+        cv::multiply(RLogi, weights[i], RLogi);
+        cv::add(RLog, RLogi, RLog);
+    }
+    cv::Mat channels[src.channels()];
+    cv::split(RLog, channels);
+    for (int i = 0; i < src.channels(); ++i) {
+        double minVal, maxVal;
+        cv::minMaxLoc(channels[i], &minVal, &maxVal);
+        double scale = 255 / (maxVal - minVal);
+        cv::subtract(channels[i], minVal, channels[i]);
+        cv::multiply(channels[i], scale, channels[i]);
+    }
+    cv::merge(channels, src.channels(), dst);
+    dst.convertTo(dst, CV_8UC3);
+}
+
+void utils::gamma(const cv::Mat &src, cv::Mat &dst, double gamma) {
+    cv::Mat lookUpTable(1, 256, CV_8U);
+    uchar *p = lookUpTable.ptr();
+    for (int i = 0; i < 256; ++i)
+        p[i] = cv::saturate_cast<uchar>(cv::pow(i / 255.0, gamma) * 255.0);
+    cv::LUT(src, lookUpTable, dst);
 }

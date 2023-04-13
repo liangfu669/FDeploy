@@ -5,19 +5,16 @@
 #ifndef VISION_CPP_ENHANCEMENT_H
 #define VISION_CPP_ENHANCEMENT_H
 
-#include "Eigen/Dense"
 #include "opencv2/opencv.hpp"
-#include "opencv2/core/eigen.hpp"
-#include "cmath"
 
 
 namespace utils {
     namespace Retinex {
-        void SSR(cv::Mat src, cv::Mat &dst, double sigma);
+        void SSR(const cv::Mat &src, cv::Mat &dst, double sigma);
 
-        void MSR(cv::Mat src, cv::Mat &dst, std::vector<float> weight, std::vector<float> sigma);
-
+        void MSR(const cv::Mat &src, cv::Mat &dst, std::vector<double> weights, std::vector<double> sigmas);
     }
+    void gamma(const cv::Mat &src, cv::Mat &dst, double gamma);
 
 }
 
