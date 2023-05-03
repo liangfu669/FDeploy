@@ -100,8 +100,8 @@ void batch_inference() {
 }
 
 void single_inference() {
-    cv::Mat image = cv::imread("inference/car.jpg");
-    auto yolo = yolo::load("yolov8n-seg.b1.transd.engine", yolo::Type::V8Seg);
+    cv::Mat image = cv::imread("/home/liangfuchu/code/cpp/vision_cpp/images/bus.jpg");
+    auto yolo = yolo::load("/home/liangfuchu/code/cpp/vision_cpp/weights/test1.engine", yolo::Type::V5);
     if (yolo == nullptr) return;
 
     auto objs = yolo->forward(cvimg(image));
@@ -131,8 +131,8 @@ void single_inference() {
 }
 
 int main() {
-    perf();
-    batch_inference();
+//    perf();
+//    batch_inference();
     single_inference();
     return 0;
 }

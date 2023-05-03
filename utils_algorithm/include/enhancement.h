@@ -13,8 +13,12 @@ namespace utils {
         void SSR(const cv::Mat &src, cv::Mat &dst, double sigma);
 
         void MSR(const cv::Mat &src, cv::Mat &dst, std::vector<double> weights, std::vector<double> sigmas);
+
+        void MSRCR(const cv::Mat &src, cv::Mat &dst, const std::vector<double> &weights, const std::vector<double> &sigmas,
+                   int alpha, int beta, int gain, int bias);
     }
     void gamma(const cv::Mat &src, cv::Mat &dst, double gamma);
+
 
 }
 

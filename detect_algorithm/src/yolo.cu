@@ -446,12 +446,12 @@ namespace yolo {
 
     class InferImpl : public Infer {
     public:
-        shared_ptr <trt::Infer> trt_;
+        shared_ptr<trt::Infer> trt_;
         string engine_file_;
         Type type_;
         float confidence_threshold_{};
         float nms_threshold_{};
-        vector <shared_ptr<trt::Memory<unsigned char>>> preprocess_buffers_;
+        vector<shared_ptr<trt::Memory<unsigned char>>> preprocess_buffers_;
         trt::Memory<float> input_buffer_, bbox_predict_, output_boxarray_;
         trt::Memory<float> segment_predict_;
         int network_input_width_{}, network_input_height_{};
@@ -461,7 +461,7 @@ namespace yolo {
         int num_classes_ = 0;
         bool has_segment_ = false;
         bool isdynamic_model_ = false;
-        vector <shared_ptr<trt::Memory<unsigned char>>> box_segment_cache_;
+        vector<shared_ptr<trt::Memory<unsigned char>>> box_segment_cache_;
 
         virtual ~InferImpl() = default;
 
@@ -484,7 +484,7 @@ namespace yolo {
         }
 
         void preprocess(int ibatch, const Image &image,
-                        shared_ptr <trt::Memory<unsigned char>> preprocess_buffer, AffineMatrix &affine,
+                        shared_ptr<trt::Memory<unsigned char>> preprocess_buffer, AffineMatrix &affine,
                         void *stream = nullptr) {
             affine.compute(make_tuple(image.width, image.height),
                            make_tuple(network_input_width_, network_input_height_));
@@ -494,11 +494,11 @@ namespace yolo {
             size_t size_image = image.width * image.height * 3;
             size_t size_matrix = upbound(sizeof(affine.d2i), 32);
             uint8_t *gpu_workspace = preprocess_buffer->gpu(size_matrix + size_image);
-            float *affine_matrix_device = (float *) gpu_workspace;
+            auto *affine_matrix_device = (float *) gpu_workspace;
             uint8_t *image_device = gpu_workspace + size_matrix;
 
             uint8_t *cpu_workspace = preprocess_buffer->cpu(size_matrix + size_image);
-            float *affine_matrix_host = (float *) cpu_workspace;
+            auto *affine_matrix_host = (float *) cpu_workspace;
             uint8_t *image_host = cpu_workspace + size_matrix;
 
             // speed up
@@ -564,7 +564,7 @@ namespace yolo {
             return output[0];
         }
 
-        virtual vector <BoxArray> forwards(const vector <Image> &images, void *stream = nullptr) override {
+        virtual vector<BoxArray> forwards(const vector<Image> &images, void *stream = nullptr) override {
             int num_image = images.size();
             if (num_image == 0) return {};
 
@@ -587,7 +587,7 @@ namespace yolo {
             }
             adjust_memory(infer_batch_size);
 
-            vector <AffineMatrix> affine_matrixs(num_image);
+            vector<AffineMatrix> affine_matrixs(num_image);
             auto stream_ = (cudaStream_t) stream;
             for (int i = 0; i < num_image; ++i)
                 preprocess(i, images[i], preprocess_buffers_[i], affine_matrixs[i], stream);
@@ -619,7 +619,7 @@ namespace yolo {
                                          output_boxarray_.gpu_bytes(), cudaMemcpyDeviceToHost, stream_));
             checkRuntime(cudaStreamSynchronize(stream_));
 
-            vector <BoxArray> arrout(num_image);
+            vector<BoxArray> arrout(num_image);
             int imemory = 0;
             for (int ib = 0; ib < num_image; ++ib) {
                 float *parray = output_boxarray_.cpu() + ib * (32 + MAX_IMAGE_BOXES * NUM_BOX_ELEMENT);
@@ -697,13 +697,13 @@ namespace yolo {
         return impl;
     }
 
-    shared_ptr <Infer> load(const string &engine_file, Type type, float confidence_threshold,
-                            float nms_threshold) {
+    shared_ptr<Infer> load(const string &engine_file, Type type, float confidence_threshold,
+                           float nms_threshold) {
         return std::shared_ptr<InferImpl>(
                 (InferImpl *) loadraw(engine_file, type, confidence_threshold, nms_threshold));
     }
 
-    std::tuple <uint8_t, uint8_t, uint8_t> hsv2bgr(float h, float s, float v) {
+    std::tuple<uint8_t, uint8_t, uint8_t> hsv2bgr(float h, float s, float v) {
         const int h_i = static_cast<int>(h * 6);
         const float f = h * 6 - h_i;
         const float p = v * (1 - s);
@@ -737,7 +737,7 @@ namespace yolo {
                           static_cast<uint8_t>(r * 255));
     }
 
-    std::tuple <uint8_t, uint8_t, uint8_t> random_color(int id) {
+    std::tuple<uint8_t, uint8_t, uint8_t> random_color(int id) {
         float h_plane = ((((unsigned int) id << 2) ^ 0x937151) % 100) / 100.0f;
         float s_plane = ((((unsigned int) id << 3) ^ 0x315793) % 100) / 100.0f;
         return hsv2bgr(h_plane, s_plane, 1);

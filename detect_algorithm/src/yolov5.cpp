@@ -9,6 +9,11 @@ detect::yolo5::PreprocessorTransform::PreprocessorTransform(const cv::Size &inpu
         : _inputSize(inputSize), _f(f), _leftWidth(leftWidth), _topHeight(topHeight) {
 }
 
+/*
+ * 1. 通过左边和上边的宽度，以及缩放比例，计算出原图中的bbox
+ * 2. 通过原图中的bbox，计算出输入图像中的bbox
+ * 3. 限制输入图像中的bbox在输入图像的范围内
+ */
 cv::Rect detect::yolo5::PreprocessorTransform::transformBbox(const cv::Rect &input) const {
     cv::Rect r;
     r.x = (input.x - _leftWidth) / _f;

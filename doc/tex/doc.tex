@@ -76,18 +76,22 @@
     \begin{equation}
         S(x, y) = R(x, y) \cdot L(x, y)\label{eq:equation2-1}
     \end{equation}
-    其中$R(x, y)$表示物体的反射性质，即图像的内在属性，应该最大程度的保留；$L(x,y)$表示入射光图像，决定了图像像素能够达到的动态范围，应该尽量去除；
+    其中$R(x, y)$表示物体的反射性质，即图像的内在属性，应该最大程度的保留；$L(x,y)$表示入射光，决定了图像像素能够达到的动态范围，应该尽量去除；
     $S(x,y)$为人眼观察到或者相机接收到的图像。
     对表达式\ref{eq:equation2-1}两边取以10为底的对数得：
     \begin{equation}
         r(x,y) = Lg[R(x,y)] = Lg[S(x, y)] - Lg[L(x,y)]\label{eq:equation2-2}
     \end{equation}
+    利用高斯滤波估计L：
+    \begin{equation}
+        L(x,y) = F(x,y) \ast S(x,y);\qquad F(x,y) = \lambda e^{\frac{-(x^2+y^2)}{\sigma ^2}}\label{eq:equation2-9}
+    \end{equation}
     算法的目的在于得到增强的图像$R(x,y)$, $S(x,y)$ 是相机采集到的图像，要求解$R(x,y)$,仅需得到$L(x,y)$即可。
     在通常情况下，我们使用高斯核对$S(x,y)$卷积得到$L(x,y)$。
     算法步骤：
     \begin{enumerate}
-        \item 输入高斯模糊的高斯环绕尺度C（即二维高斯函数的标准差）；
-        \item 根据C对原始图像数据$S(x,y)$做高斯模糊得到$L(x,y)$;
+        \item 输入高斯模糊的高斯环绕尺度$\sigma$（即二维高斯函数的标准差）；
+        \item 根据$\sigma$对原始图像数据$S(x,y)$做高斯模糊得到$L(x,y)$;
         \item 根据表达式\ref{eq:equation2-1}对$S(x,y)$和$L(x,y)$分别取对数并作差得到r(x,y);
         \item 将$r(x,y)$的像素值量化到0到255的范围内得到$R(x,y)$，$R(x,y)$即我们想得到的增强图像。量化的公式如下：
     \end{enumerate}
@@ -114,6 +118,24 @@
     SSR与MSR普遍存在偏色问题，为此，研究者又开发出一种称之为带色彩恢复的多尺度视网膜增强算法
     （MSRCR,Multi-Scale Retinex with Color Restoration) ，具体讨论的过程详见
     《A Multiscale Retinex for Bridging the Gap Between Color Images and the Human Observation of Scenes》论文。
+    其主要量化公式：
+    \begin{equation}
+        R_{MSRCR_i}(x,y) = C_i(x,y) \cdot R_{MSR_i}(x,y)\label{eq:equation2-6}
+    \end{equation}
+    \begin{equation}
+        \begin{split}
+            C_i(x, y) &= f[\frac{S_i(x,y)}{\sum_{j=1}^{N} S_j(x,y)}]\label{eq:equation2-7} \\
+                      &= \beta Lg[\frac{\alpha S_i(x,y)}{\sum_{j=1}^{3} S_j(x,y)}]
+        \end{split}
+    \end{equation}
+    其中$S_i$或$S_j$为第i或第j个通道图像，$C_i$表示第i个通道的彩色回复因子，用来调节3个通道颜色的比例，$\alpha$，$\beta$分别为
+    受控制的非线性强度，增益常数。
+
+    但是MSRCR算法处理图像后，像素值一般会出现负值。所以从对数域$r(x,y)$转换为实数域$R(x,y)$后，需要通过改变增益Gain，
+    偏差Bias对图像进行修正。使用公式可以表示为：
+    \begin{equation}
+        R_{correct} = G \cdot R_{MSRCR} + B \label{eq:equation2-8}
+    \end{equation}
 
     \section{光照修复：gamma矫正}\label{sec::gama}
     图像增强的目的是改善图像的质量，使图像更适合于特定的应用或显示。其中一种常用的图像增强方法是伽马矫正，

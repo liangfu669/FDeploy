@@ -1,7 +1,7 @@
 
 #include <NvInfer.h>
 #include <cuda_runtime.h>
-#include <stdarg.h>
+#include <cstdarg>
 
 #include <fstream>
 #include <numeric>
@@ -199,9 +199,9 @@ namespace trt {
         release_gpu();
     }
 
-    class __native_nvinfer_logger : public ILogger {
+    class _native_nvinfer_logger : public ILogger {
     public:
-        virtual void log(Severity severity, const char *msg) noexcept override {
+        void log(Severity severity, const char *msg) noexcept override {
             if (severity == Severity::kINTERNAL_ERROR) {
                 INFO("NVInfer INTERNAL_ERROR: %s", msg);
                 abort();
@@ -220,10 +220,10 @@ namespace trt {
         }
     };
 
-    static __native_nvinfer_logger gLogger;
+    static _native_nvinfer_logger gLogger;
 
-    template<typename _T>
-    static void destroy_nvidia_pointer(_T *ptr) {
+    template<typename T>
+    static void destroy_nvidia_pointer(T *ptr) {
         if (ptr) ptr->destroy();
     }
 
@@ -245,9 +245,9 @@ namespace trt {
         return data;
     }
 
-    class __native_engine_context {
+    class _native_engine_context {
     public:
-        virtual ~__native_engine_context() { destroy(); }
+        virtual ~_native_engine_context() { destroy(); }
 
         bool construct(const void *pdata, size_t size) {
             destroy();
@@ -281,13 +281,13 @@ namespace trt {
 
     class InferImpl : public Infer {
     public:
-        shared_ptr<__native_engine_context> context_;
+        shared_ptr<_native_engine_context> context_;
         unordered_map<string, int> binding_name_to_index_;
 
         virtual ~InferImpl() = default;
 
         bool construct(const void *data, size_t size) {
-            context_ = make_shared<__native_engine_context>();
+            context_ = make_shared<_native_engine_context>();
             if (!context_->construct(data, size)) {
                 return false;
             }
@@ -316,68 +316,68 @@ namespace trt {
             }
         }
 
-        virtual int index(const std::string &name) override {
+        int index(const std::string &name) override {
             auto iter = binding_name_to_index_.find(name);
             Assertf(iter != binding_name_to_index_.end(), "Can not found the binding name: %s",
                     name.c_str());
             return iter->second;
         }
 
-        virtual bool forward(const std::vector<void *> &bindings, void *stream,
+        bool forward(const std::vector<void *> &bindings, void *stream,
                              void *input_consum_event) override {
             return this->context_->context_->enqueueV2((void **) bindings.data(), (cudaStream_t) stream,
                                                        (cudaEvent_t *) input_consum_event);
         }
 
-        virtual std::vector<int> run_dims(const std::string &name) override {
+        std::vector<int> run_dims(const std::string &name) override {
             return run_dims(index(name));
         }
 
-        virtual std::vector<int> run_dims(int ibinding) override {
+        std::vector<int> run_dims(int ibinding) override {
             auto dim = this->context_->context_->getBindingDimensions(ibinding);
             return std::vector<int>(dim.d, dim.d + dim.nbDims);
         }
 
-        virtual std::vector<int> static_dims(const std::string &name) override {
+        std::vector<int> static_dims(const std::string &name) override {
             return static_dims(index(name));
         }
 
-        virtual std::vector<int> static_dims(int ibinding) override {
+        std::vector<int> static_dims(int ibinding) override {
             auto dim = this->context_->engine_->getBindingDimensions(ibinding);
             return std::vector<int>(dim.d, dim.d + dim.nbDims);
         }
 
-        virtual int num_bindings() override { return this->context_->engine_->getNbBindings(); }
+        int num_bindings() override { return this->context_->engine_->getNbBindings(); }
 
-        virtual bool is_input(int ibinding) override {
+        bool is_input(int ibinding) override {
             return this->context_->engine_->bindingIsInput(ibinding);
         }
 
-        virtual bool set_run_dims(const std::string &name, const std::vector<int> &dims) override {
+        bool set_run_dims(const std::string &name, const std::vector<int> &dims) override {
             return this->set_run_dims(index(name), dims);
         }
 
-        virtual bool set_run_dims(int ibinding, const std::vector<int> &dims) override {
+        bool set_run_dims(int ibinding, const std::vector<int> &dims) override {
             Dims d;
             memcpy(d.d, dims.data(), sizeof(int) * dims.size());
             d.nbDims = dims.size();
             return this->context_->context_->setBindingDimensions(ibinding, d);
         }
 
-        virtual int numel(const std::string &name) override { return numel(index(name)); }
+        int numel(const std::string &name) override { return numel(index(name)); }
 
-        virtual int numel(int ibinding) override {
+        int numel(int ibinding) override {
             auto dim = this->context_->context_->getBindingDimensions(ibinding);
             return std::accumulate(dim.d, dim.d + dim.nbDims, 1, std::multiplies<int>());
         }
 
-        virtual DType dtype(const std::string &name) override { return dtype(index(name)); }
+        DType dtype(const std::string &name) override { return dtype(index(name)); }
 
-        virtual DType dtype(int ibinding) override {
+        DType dtype(int ibinding) override {
             return (DType) this->context_->engine_->getBindingDataType(ibinding);
         }
 
-        virtual bool has_dynamic_dim() override {
+        bool has_dynamic_dim() override {
             // check if any input or output bindings have dynamic shapes
             // code from ChatGPT
             int numBindings = this->context_->engine_->getNbBindings();
@@ -390,7 +390,7 @@ namespace trt {
             return false;
         }
 
-        virtual void print() override {
+        void print() override {
             INFO("Infer %p [%s]", this, has_dynamic_dim() ? "DynamicShape" : "StaticShape");
 
             int num_input = 0;

@@ -62,6 +62,40 @@ void utils::Retinex::MSR(const cv::Mat &src, cv::Mat &dst, std::vector<double> w
     dst.convertTo(dst, CV_8UC3);
 }
 
+void utils::Retinex::MSRCR(const cv::Mat &src, cv::Mat &dst, const std::vector<double> &weights, const std::vector<double> &sigmas,
+           int alpha, int beta, int gain, int bias) {
+    // 求MSR
+    cv::Mat msr;
+    utils::Retinex::MSR(src, msr, weights, sigmas);
+    msr.convertTo(msr, CV_64FC3);
+    // 求Ci
+    cv::Mat src64F;
+    src.convertTo(src64F, CV_64FC3);
+    cv::Mat sumS = cv::Mat::zeros(src.size(), CV_64FC1);
+    for (int i = 0; i < src.rows; ++i) {
+        for (int j = 0; j < src.cols; ++j) {
+            sumS.ptr<double>(i)[j] =
+                    src64F.ptr<cv::Vec3d>(i)[j][0] + src64F.ptr<cv::Vec3d>(i)[j][1] + src64F.ptr<cv::Vec3d>(i)[j][2];
+        }
+    }
+    cv::Mat MSRi[3];
+    cv::split(msr, MSRi);
+    cv::Mat Si[3], C[3], msrcr[3];
+    cv::split(src64F, Si);
+    for (int i = 0; i < 3; ++i) {
+        cv::Mat divS;
+        cv::divide(Si[i], sumS, divS);
+        cv::log(alpha * divS, C[i]);
+        C[i] *= beta;
+        msrcr[i] = C[i].mul(MSRi[i]);
+        msrcr[i] = gain * msrcr[i] + bias;
+    }
+    cv::Mat result;
+    cv::merge(msrcr, 3, result);
+    cv::normalize(result, dst, 0, 255, cv::NORM_MINMAX, CV_8UC3);
+}
+
+
 void utils::gamma(const cv::Mat &src, cv::Mat &dst, double gamma) {
     cv::Mat lookUpTable(1, 256, CV_8U);
     uchar *p = lookUpTable.ptr();

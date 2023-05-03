@@ -27,8 +27,8 @@ namespace trt {
         float stop(const char *prefix = "Timer", bool print = true);
 
     private:
-        void *start_, *stop_;
-        void *stream_;
+        void *start_{}, *stop_{};
+        void *stream_{};
     };
 
     class BaseMemory {
@@ -73,7 +73,7 @@ namespace trt {
         bool owner_gpu_ = true;
     };
 
-    template<typename _DT>
+    template<typename DT>
     class Memory : public BaseMemory {
     public:
         Memory() = default;
@@ -82,17 +82,17 @@ namespace trt {
 
         Memory &operator=(const Memory &other) = delete;
 
-        virtual _DT *gpu(size_t size) { return (_DT *) BaseMemory::gpu_realloc(size * sizeof(_DT)); }
+        virtual DT *gpu(size_t size) { return (DT *) BaseMemory::gpu_realloc(size * sizeof(DT)); }
 
-        virtual _DT *cpu(size_t size) { return (_DT *) BaseMemory::cpu_realloc(size * sizeof(_DT)); }
+        virtual DT *cpu(size_t size) { return (DT *) BaseMemory::cpu_realloc(size * sizeof(DT)); }
 
-        inline size_t cpu_size() const { return cpu_bytes_ / sizeof(_DT); }
+        inline size_t cpu_size() const { return cpu_bytes_ / sizeof(DT); }
 
-        inline size_t gpu_size() const { return gpu_bytes_ / sizeof(_DT); }
+        inline size_t gpu_size() const { return gpu_bytes_ / sizeof(DT); }
 
-        virtual inline _DT *gpu() const { return (_DT *) gpu_; }
+        virtual inline DT *gpu() const { return (DT *) gpu_; }
 
-        virtual inline _DT *cpu() const { return (_DT *) cpu_; }
+        virtual inline DT *cpu() const { return (DT *) cpu_; }
     };
 
     class Infer {
