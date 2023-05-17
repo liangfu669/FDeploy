@@ -1,7 +1,7 @@
 //
 // Created by liangfuchu on 23-3-1.
 //
-#include "../classification_algorithm/include/hogSvm.h"
+#include "../algorithm/classify/include/hogSvm.h"
 
 
 int main()

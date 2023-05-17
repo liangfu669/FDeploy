@@ -24,13 +24,10 @@ include_directories(/home/liangfuchu/soft/TensorRT-8.5.2.2/include)  # 包含ten
 link_directories(/home/liangfuchu/soft/TensorRT-8.5.2.2/lib)
 link_libraries(nvinfer)
 
-add_subdirectory(utils_algorithm)
-add_subdirectory(detect_algorithm)
-add_subdirectory(classification_algorithm)
+add_subdirectory(algorithm)
 add_subdirectory(sample)
 
 add_executable(main main.cpp)
 
-target_link_libraries(main ${PROJECT_SOURCE_DIR}/cmake-build-debug/detect_algorithm/libyolov5.so)
 
 
