@@ -1,7 +1,8 @@
-#ifndef VISION_CPP_RESNET_H
-#define VISION_CPP_RESNET_H
+#ifndef VISION_CPP_RESNET_HPP
+#define VISION_CPP_RESNET_HPP
 
 #include "opencv2/opencv.hpp"
+#include "fstream"
 
 namespace resnet {
 
@@ -17,6 +18,8 @@ namespace resnet {
 
     std::shared_ptr<Infer> load(const std::string &engine_file);
 
+    std::vector<std::string> read_class_name(const std::string &path);
+
 
 };
-#endif //VISION_CPP_RESNET_H
+#endif //VISION_CPP_RESNET_HPP

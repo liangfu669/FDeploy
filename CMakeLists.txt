@@ -25,6 +25,9 @@ link_directories(/home/liangfuchu/soft/TensorRT-8.5.2.2/lib)
 link_libraries(nvinfer)
 
 add_subdirectory(algorithm)
+
+
+
 add_subdirectory(sample)
 
 add_executable(main main.cpp)

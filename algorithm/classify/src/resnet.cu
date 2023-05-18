@@ -1,4 +1,4 @@
-#include "../include/resnet.h"
+#include "../include/resnet.hpp"
 #include "../../common/common.hpp"
 
 
@@ -161,5 +161,15 @@ namespace resnet {
     shared_ptr<Infer> load(const string &engine_file) {
         return std::shared_ptr<InferImpl>(
                 (InferImpl *) loadraw(engine_file));
+    }
+
+    std::vector<std::string> read_class_name(const std::string &path) {
+        std::vector<std::string> class_names;
+        std::ifstream infile(path);
+        std::string line;
+        while (std::getline(infile, line)) {
+            class_names.push_back(line);
+        }
+        return class_names;
     }
 }

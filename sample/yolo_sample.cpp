@@ -1,9 +1,5 @@
-
 #include <opencv2/opencv.hpp>
-
-#include "../detect_algorithm/include/cpm.hpp"
-#include "../detect_algorithm/include/infer.hpp"
-#include "../detect_algorithm/include/yolo.hpp"
+#include "../algorithm/detect/include/yolo.hpp"
 
 using namespace std;
 
@@ -37,41 +33,11 @@ static const char *cocolabels[] = {"person", "bicycle", "car",
 
 yolo::Image cvimg(const cv::Mat &image) { return {image.data, image.cols, image.rows}; }
 
-void perf() {
-    int max_infer_batch = 16;
-    int batch = 16;
-    std::vector<cv::Mat> images{cv::imread("inference/car.jpg"), cv::imread("inference/gril.jpg"),
-                                cv::imread("inference/group.jpg")};
-
-    for (int i = images.size(); i < batch; ++i) images.push_back(images[i % 3]);
-
-    cpm::Instance<yolo::BoxArray, yolo::Image, yolo::Infer> cpmi;
-    bool ok = cpmi.start([] { return yolo::load("yolov8n.transd.engine", yolo::Type::V8); },
-                         max_infer_batch);
-
-    if (!ok) return;
-
-    std::vector<yolo::Image> yoloimages(images.size());
-    std::transform(images.begin(), images.end(), yoloimages.begin(), cvimg);
-
-    trt::Timer timer;
-    for (int i = 0; i < 5; ++i) {
-        timer.start();
-        cpmi.commits(yoloimages).back().get();
-        timer.stop("BATCH16");
-    }
-
-    for (int i = 0; i < 5; ++i) {
-        timer.start();
-        cpmi.commit(yoloimages[0]).get();
-        timer.stop("BATCH1");
-    }
-}
 
 void batch_inference() {
-    std::vector<cv::Mat> images{cv::imread("inference/car.jpg"), cv::imread("inference/gril.jpg"),
-                                cv::imread("inference/group.jpg")};
-    auto yolo = yolo::load("yolov8n.transd.engine", yolo::Type::V8);
+    std::vector<cv::Mat> images{cv::imread("image/street.jpg"), cv::imread("image/bus.jpg"),
+                                cv::imread("image/ng.jpg")};
+    auto yolo = yolo::load("weights/yolov8n.transd.engine", yolo::Type::V8);
     if (yolo == nullptr) return;
 
     std::vector<yolo::Image> yoloimages(images.size());
@@ -95,13 +61,13 @@ void batch_inference() {
                         16);
         }
         printf("Save result to Result.jpg, %d objects\n", (int) objs.size());
-        cv::imwrite(cv::format("Result%d.jpg", ib), image);
+        cv::imwrite(cv::format("image/Result%d.jpg", ib), image);
     }
 }
 
 void single_inference() {
-    cv::Mat image = cv::imread("/home/liangfuchu/code/cpp/vision_cpp/images/bus.jpg");
-    auto yolo = yolo::load("/home/liangfuchu/code/cpp/vision_cpp/weights/test1.engine", yolo::Type::V5);
+    cv::Mat image = cv::imread("image/bus.jpg");
+    auto yolo = yolo::load("weights/yolov5s.engine", yolo::Type::V5);
     if (yolo == nullptr) return;
 
     auto objs = yolo->forward(cvimg(image));
@@ -127,12 +93,11 @@ void single_inference() {
     }
 
     printf("Save result to Result.jpg, %d objects\n", (int) objs.size());
-    cv::imwrite("Result.jpg", image);
+    cv::imwrite("image/yolov5_Result.jpg", image);
 }
 
 int main() {
-//    perf();
-//    batch_inference();
+    batch_inference();
     single_inference();
     return 0;
 }
